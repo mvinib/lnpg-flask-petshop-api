@@ -49,7 +49,14 @@ def create_appointment():
         return validation_error
     
     appointments = Appointments()
-    appointments.create(data)
+    try:
+        appointments.create(data)
+    except Exception as err:
+        return jsonify({
+            "success": False,
+            "point": "create_appointment",
+            "message": str(err)
+        }), 400
 
     return jsonify({ "success": True }), 201
 

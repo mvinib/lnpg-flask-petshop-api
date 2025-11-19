@@ -1,2 +1,4 @@
 flask
 requests
+Flask-JWT-Extended
+python-dotenv
