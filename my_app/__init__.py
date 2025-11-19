@@ -19,11 +19,13 @@ def create_app():
     from .api.clients import clients_bp
     from .api.appointments import appointments_bp
     from .api.pets import pets_bp
+    from .api.employees import employees_bp
     from .api.auth import auth_bp
 
     app.register_blueprint(clients_bp, url_prefix='/clients')
     app.register_blueprint(appointments_bp, url_prefix='/appointments')
     app.register_blueprint(pets_bp, url_prefix='/pets')
+    app.register_blueprint(employees_bp, url_prefix='/employees')
     app.register_blueprint(auth_bp, url_prefix='/auth')
 
     jwt = JWTManager(app)

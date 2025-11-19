@@ -43,7 +43,7 @@ def get_employee_by_id(employee_id):
 def create_employee():
     data = request.json
 
-    validation_error = schemaValidate(["name", "job_title"], data)
+    validation_error = schemaValidate(["name", "job_title", "email", "password"], data)
 
     if validation_error:
         return validation_error
