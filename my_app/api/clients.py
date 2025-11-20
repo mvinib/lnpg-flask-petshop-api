@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from ..services.clients import Clients
 from ..utils.validate import schemaValidate
+from flask_jwt_extended import jwt_required
 
 clients_bp = Blueprint('clients', __name__)
 
@@ -49,7 +50,15 @@ def create_client():
         return validation_error
     
     clients = Clients()
-    clients.create(data)
+    try:
+        clients.create(data)
+    except Exception as err:
+        return jsonify({
+            "success": False,
+            "point": "create_client",
+            "message": str(err)
+        }), 400
+    
 
     return jsonify({ "success": True }), 201
 

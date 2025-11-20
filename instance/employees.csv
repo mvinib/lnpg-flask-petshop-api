@@ -1,1 +1,1 @@
-id, name, job_title, created_at
+id, name, job_title, email, password, created_at
