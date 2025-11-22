@@ -1,10 +1,12 @@
 from flask import Blueprint, jsonify, request
 from ..services.employees import Employees
 from ..utils.validate import schemaValidate
+from flask_jwt_extended import jwt_required
 
 employees_bp = Blueprint('employees', __name__)
 
 @employees_bp.route('/', methods=['GET'])
+@jwt_required()
 def get_employees():
     employees = Employees()
     filters = request.args.to_dict()
@@ -23,6 +25,7 @@ def get_employees():
     }), 200
 
 @employees_bp.route('/<int:employee_id>', methods=['GET'])
+@jwt_required()
 def get_employee_by_id(employee_id):
     employees = Employees()
     employee = employees.get_by_id(employee_id)
@@ -40,6 +43,7 @@ def get_employee_by_id(employee_id):
 
 
 @employees_bp.route('/', methods=['POST'])
+@jwt_required()
 def create_employee():
     data = request.json
 
@@ -54,6 +58,7 @@ def create_employee():
     return jsonify({ "success": True }), 201
 
 @employees_bp.route('/<int:employee_id>', methods=['DELETE'])
+@jwt_required()
 def delete_employee(employee_id):
     employees = Employees()
     try:
@@ -69,6 +74,7 @@ def delete_employee(employee_id):
     return jsonify({ "success": True }), 200
 
 @employees_bp.route('/<int:employee_id>', methods=['PATCH'])
+@jwt_required()
 def update_employee(employee_id):
     data = request.json
     validation_error = schemaValidate(["id", "created_at"], data, False)
