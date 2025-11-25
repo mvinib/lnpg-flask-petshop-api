@@ -2,6 +2,7 @@ from ..utils.data_handler import DataHandler
 from datetime import datetime as dt
 from typing import List, Dict, Any
 
+
 class Pets:
     def __init__(self):
         self.handler = DataHandler("pets")
@@ -14,6 +15,10 @@ class Pets:
         return self.get_relationship(data)
 
     def create(self, data: dict):
+        from .clients import Clients
+        clients = Clients()
+        if not clients.get_by_id(data.get("owner_id")):
+            raise Exception("Cliente não encontrado")
         self.handler.create({**data, "created_at": dt.now()})
 
     def delete(self, id):

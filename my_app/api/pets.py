@@ -3,6 +3,7 @@ from flask_smorest import Blueprint
 from flask_jwt_extended import jwt_required
 from ..services.pets import Pets
 from ..schemas.generic import GenericSuccessSchema
+from ..utils.validate import schemaValidate
 
 # Import dos Schemas
 from ..schemas.pets import (
@@ -10,7 +11,8 @@ from ..schemas.pets import (
     CreatePetSchema, CreatePetResponseFailedSchema,
     DeletePetResponseFailedSchema,
     UpdatePetSchema, UpdatePetResponseFailedSchema,
-    PetFilterSchema # <--- IMPORT NOVO
+    PetFilterSchema, # <--- IMPORT NOVO
+    VALID_SPECIES
 )
 
 # Tenta importar o ValidationFailedSchema
@@ -76,14 +78,36 @@ def get_pet_by_id(pet_id):
 # -----------------------------------------------------------------------------
 @pets_bp.route('/', methods=['POST'])
 @pets_bp.doc(security=[{"bearerAuth": []}])
-@pets_bp.arguments(CreatePetSchema, location="json") 
+@pets_bp.doc(
+    requestBody={
+        "content": {
+            "application/json": {
+                "schema": CreatePetSchema 
+            }
+        },
+        "required": True 
+    }
+)
 @pets_bp.response(201, GenericSuccessSchema, description="Pet cadastrado com sucesso")
 @pets_bp.response(400, CreatePetResponseFailedSchema, description="Violação de regra de negócio")
 @pets_bp.response(422, ValidationFailedSchema, description="Erro de validação")
 @jwt_required()
-def create_pet(pet_data): 
+def create_pet(): 
     """Cadastrar novo pet."""
+    pet_data = request.json
+
+    validation_error = schemaValidate(["name", "specie", "age", "owner_id", "sex"], pet_data)
+
+    if validation_error:
+        return validation_error
     
+    if not pet_data.get("specie") in VALID_SPECIES:
+        return jsonify({
+            "success": False,
+            "point": "create_pet_validation",
+            "message": f"O campo 'specie' deve ser {", ".join(VALID_SPECIES)}"
+        }), 400
+
     if pet_data["sex"].upper() not in ('M', 'F'):
         return jsonify({
             "success": False,
@@ -110,23 +134,31 @@ def create_pet(pet_data):
 # -----------------------------------------------------------------------------
 @pets_bp.route('/<int:pet_id>', methods=['PATCH'])
 @pets_bp.doc(security=[{"bearerAuth": []}])
-@pets_bp.arguments(UpdatePetSchema, location="json")
+@pets_bp.doc(
+    requestBody={
+        "content": {
+            "application/json": {
+                "schema": UpdatePetSchema 
+            }
+        },
+        "required": True 
+    }
+)
 @pets_bp.response(200, GenericSuccessSchema, description="Atualização realizada")
 @pets_bp.response(400, UpdatePetResponseFailedSchema, description="Erro na atualização")
 @pets_bp.response(422, ValidationFailedSchema, description="Formato de dados inválido")
 @jwt_required()
-def update_pet(data, pet_id): 
+def update_pet(pet_id): 
     """Atualizar dados do pet."""
-    
-    if "id" in data or "created_at" in data:
-         return jsonify({
-            "success": False,
-            "point": "update_pet_validation",
-            "message": "Não é permitido alterar id ou created_at manualmente"
-        }), 422
+    pet_data = request.json
 
-    if "sex" in data:
-        sex = data.get("sex")
+    validation_error = schemaValidate(["id", "created_at"], pet_data, False)
+
+    if validation_error:
+        return validation_error
+    
+    if "sex" in pet_data:
+        sex = pet_data.get("sex")
         if sex:
             if sex.upper() not in ('M', 'F'):
                 return jsonify({
@@ -134,11 +166,18 @@ def update_pet(data, pet_id):
                     "point": "update_pet_validation",
                     "message": "O campo 'sex' deve ser 'M' (Macho) ou 'F' (Fêmea)."
                 }), 400
-            data["sex"] = sex.upper()
+            pet_data["sex"] = sex.upper()
+    if "specie" in pet_data:
+        if not pet_data.get("specie") in VALID_SPECIES:
+            return jsonify({
+                "success": False,
+                "point": "create_pet_validation",
+                "message": f"O campo 'specie' deve ser {", ".join(VALID_SPECIES)}"
+            }), 400
 
     pets = Pets()
     try:
-        pets.update(pet_id, data)
+        pets.update(pet_id, pet_data)
     except Exception as err:
         return jsonify({
             "success": False,
