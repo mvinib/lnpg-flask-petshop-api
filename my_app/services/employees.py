@@ -1,6 +1,7 @@
 from ..utils.data_handler import DataHandler
 from datetime import datetime as dt
 from werkzeug.security import generate_password_hash
+from flask_jwt_extended import get_jwt_identity
 
 class Employees:
     def __init__(self):
@@ -21,6 +22,10 @@ class Employees:
         self.handler.delete(id)
     
     def update(self, id, data: dict):
+        user_id = get_jwt_identity()
+        if str(id) != str(user_id):
+            raise Exception("Você não pode alterar as informações de outro usuário.")
+        
         if data.get("password"):
             data["password"] = generate_password_hash(data.get("password"))
         self.handler.update({**data, "id": id})
