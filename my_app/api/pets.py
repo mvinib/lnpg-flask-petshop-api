@@ -10,9 +10,10 @@ from ..schemas.pets import (
     CreatePetSchema, CreatePetResponseFailedSchema,
     DeletePetResponseFailedSchema,
     UpdatePetSchema, UpdatePetResponseFailedSchema,
+    PetFilterSchema # <--- IMPORT NOVO
 )
 
-# Tenta importar o ValidationFailedSchema, senão usa o padrão do erro 422
+# Tenta importar o ValidationFailedSchema
 try:
     from ..utils.validate import ValidationFailedSchema
 except ImportError:
@@ -21,26 +22,27 @@ except ImportError:
 pets_bp = Blueprint('pets', __name__)
 
 # -----------------------------------------------------------------------------
-# ROTA: LISTAR PETS
+# ROTA: LISTAR PETS (Atualizada com Filtros)
 # -----------------------------------------------------------------------------
 @pets_bp.route('/', methods=['GET'])
 @pets_bp.response(200, GetPetsResponseSchema, description="Lista de pets recuperada com sucesso")
+@pets_bp.arguments(PetFilterSchema, location="query") # <--- Injeta os filtros na função
 @pets_bp.doc(security=[{"bearerAuth": []}])
 @jwt_required()
-def get_pets():
+def get_pets(filters): # Recebe 'filters' do argumento acima
     """Listar todos os pets.
 
     Retorna uma listagem completa dos animais cadastrados.
-    
-    **Funcionalidades:**
-    * **Filtros:** É possível filtrar por qualquer campo (ex: `?specie=Cachorro&sex=M`).
-    * **Relacionamento:** Cada pet traz o objeto completo do seu Dono (`owner_id`).
+    Permite filtros avançados via Query Parameters (logic, operator, etc).
     """
     pets = Pets()
-    filters = request.args.to_dict()
     data = []
 
-    if not filters:
+    # Se o filtro tiver APENAS 'logic' e 'operator' (que são padrões), listamos tudo.
+    # Se tiver mais chaves (name, specie...), fazemos a busca.
+    keys_de_busca = [k for k in filters.keys() if k not in ["logic", "operator"]]
+    
+    if not keys_de_busca:
         data = pets.list()
     else:
         data = pets.search(filters)
@@ -56,12 +58,7 @@ def get_pets():
 @pets_bp.doc(security=[{"bearerAuth": []}])
 @jwt_required()
 def get_pet_by_id(pet_id):
-    """Obter detalhes de um pet.
-
-    Busca um registro específico pelo seu ID único.
-    
-    O retorno inclui os dados detalhados do Cliente (Dono) associado.
-    """
+    """Obter detalhes de um pet."""
     pets = Pets()
     pet = pets.get_by_id(pet_id)
 
@@ -82,27 +79,17 @@ def get_pet_by_id(pet_id):
 @pets_bp.arguments(CreatePetSchema, location="json") 
 @pets_bp.response(201, GenericSuccessSchema, description="Pet cadastrado com sucesso")
 @pets_bp.response(400, CreatePetResponseFailedSchema, description="Violação de regra de negócio")
-@pets_bp.response(422, ValidationFailedSchema, description="Erro de validação (Campos obrigatórios ou formato inválido)")
+@pets_bp.response(422, ValidationFailedSchema, description="Erro de validação")
 @jwt_required()
 def create_pet(pet_data): 
-    """Cadastrar novo pet.
-
-    Cria um novo registro no banco de dados.
-
-    **Regras de Negócio:**
-    * **Idade:** Deve ser enviada em **MESES** (ex: 2 anos = 24).
-    * **Espécie:** Deve ser uma das opções válidas (Cachorro, Gato, etc).
-    * **Sexo:** O sistema aceita 'm' ou 'f' e converte para maiúsculo automaticamente.
-    """
+    """Cadastrar novo pet."""
     
-    # Validação de Regra de Negócio (Sexo)
     if pet_data["sex"].upper() not in ('M', 'F'):
         return jsonify({
             "success": False,
             "point": "create_pet_validation",
             "message": "O campo 'sex' deve ser 'M' (Macho) ou 'F' (Fêmea)."
         }), 400
-    
     
     pet_data["sex"] = pet_data["sex"].upper()
 
@@ -129,15 +116,8 @@ def create_pet(pet_data):
 @pets_bp.response(422, ValidationFailedSchema, description="Formato de dados inválido")
 @jwt_required()
 def update_pet(data, pet_id): 
-    """Atualizar dados do pet.
-
-    Atualiza parcialmente os dados. Envie apenas os campos que deseja alterar.
+    """Atualizar dados do pet."""
     
-    * **Idade:** Se enviar, use meses.
-    * **Imutável:** Não é possível alterar `id` ou `created_at`.
-    """
-    
-    # Proteção extra contra alteração de ID/Data
     if "id" in data or "created_at" in data:
          return jsonify({
             "success": False,
@@ -145,7 +125,6 @@ def update_pet(data, pet_id):
             "message": "Não é permitido alterar id ou created_at manualmente"
         }), 422
 
-    # Lógica de Sexo para Update
     if "sex" in data:
         sex = data.get("sex")
         if sex:
@@ -178,10 +157,7 @@ def update_pet(data, pet_id):
 @pets_bp.response(400, DeletePetResponseFailedSchema, description="ID não encontrado ou erro ao deletar")
 @jwt_required()
 def delete_pet(pet_id):
-    """Remover pet do sistema.
-
-    Exclui permanentemente o registro.
-    """
+    """Remover pet do sistema."""
     pets = Pets()
     try:
         pets.delete(pet_id)

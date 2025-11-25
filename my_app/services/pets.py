@@ -5,8 +5,7 @@ from typing import List, Dict, Any
 class Pets:
     def __init__(self):
         self.handler = DataHandler("pets")
-        # IMPORTANTE: Instanciamos um handler de clientes diretamente aqui
-        # para buscar o dono sem chamar o serviço 'Clients' (evita Loop Infinito)
+        # Instanciamos handler de clientes para evitar Loop Infinito ao buscar dono
         self.client_handler = DataHandler("clients")
 
     def list(self):
@@ -35,12 +34,14 @@ class Pets:
         """Busca com filtros e popula os dados do dono."""
         filters_to_remove = ["logic", "operator"]
         
+        # O DataHandler espera receber 'criteria' (lista) e 'logic' separadamente
         data = self.handler.search({
             "logic": filters.get("logic", "AND"),
             "criteria": [
                 {
                     "key": key, 
                     "value": value, 
+                    # Usa o operador que veio do filtro OU 'CONTAINS' se não veio nada
                     "operator": filters.get("operator", "CONTAINS")
                 }
                 for key, value in filters.items() 
@@ -59,9 +60,7 @@ class Pets:
             if owner_id:
                 # Busca o cliente cru (raw) diretamente do banco
                 owner = self.client_handler.get_by_id(owner_id)
-                
                 # Substitui o valor do campo 'owner_id' pelo objeto do cliente
-                # Exemplo: "owner_id": 1  --->  "owner_id": { "id": 1, "name": "Fulano"... }
                 pet["owner_id"] = owner
         
         return data

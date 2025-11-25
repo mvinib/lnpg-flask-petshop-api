@@ -1,6 +1,8 @@
 from marshmallow import Schema, fields, validate
 
+# Lista de espécies válidas para reutilizar
 VALID_SPECIES = ["Cachorro", "Gato", "Pássaro", "Peixe", "Roedor", "Outros"]
+
 # --- SCHEMA BASE (Para exibição/GET) ---
 class PetSchema(Schema):
     id = fields.String(
@@ -59,7 +61,7 @@ class CreatePetSchema(Schema):
     )
     specie = fields.String(
         required=True,
-        validate=validate.OneOf(VALID_SPECIES), 
+        validate=validate.OneOf(VALID_SPECIES),
         metadata={
             "description": f"Espécie do animal. Opções: {', '.join(VALID_SPECIES)}.",
             "example": "Gato"
@@ -71,14 +73,12 @@ class CreatePetSchema(Schema):
     )
     age = fields.Integer(
         required=True,
-        # Garante que a idade não seja negativa
         validate=validate.Range(min=0, error="A idade deve ser maior ou igual a 0."),
         metadata={
             "description": "Idade do animal em MESES completos. (Ex: 2 anos = 24).",
             "example": 24
         }
     )
-    # No cadastro, enviamos apenas o ID numérico
     owner_id = fields.Integer(
         required=True, 
         metadata={"description": "ID do cliente dono do pet.", "example": 1}
@@ -94,7 +94,7 @@ class UpdatePetSchema(Schema):
     name = fields.String(required=False, metadata={"example": "Mel da Silva"})
     specie = fields.String(
         required=False,
-        validate=validate.OneOf(VALID_SPECIES), 
+        validate=validate.OneOf(VALID_SPECIES),
         metadata={"example": "Gato"}
     )
     sex = fields.String(required=False, metadata={"description": "M ou F", "example": "F"})
@@ -114,3 +114,24 @@ class DeletePetResponseFailedSchema(Schema):
     success = fields.Boolean(required=True, metadata={"example": False})
     point = fields.String(required=True, metadata={"example": "delete_pet"})
     message = fields.String(required=True, metadata={"example": "Pet não encontrado"})
+
+# --- FILTROS (Novo!) ---
+class PetFilterSchema(Schema):
+    logic = fields.String(
+        load_default="AND",
+        validate=validate.OneOf(["AND", "OR"]),
+        metadata={
+            "description": "Lógica de comparação entre os campos. Padrão: AND."
+        }
+    )
+    operator = fields.String(
+        load_default="CONTAINS",
+        validate=validate.OneOf(["EQUAL", "NOT EQUAL", "CONTAINS", "LESS THAN", "MORE THAN", "LESS THAN OR EQUAL", "MORE THAN OR EQUAL"]),
+        metadata={
+            "description": "Tipo de operador para a busca. Padrão: CONTAINS."
+        }
+    )
+    name = fields.String(required=False, metadata={"description": "Filtrar por nome."})
+    specie = fields.String(required=False, metadata={"description": "Filtrar por espécie."})
+    sex = fields.String(required=False, metadata={"description": "Filtrar por sexo."})
+    age = fields.String(required=False, metadata={"description": "Filtrar por idade."})
