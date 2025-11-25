@@ -1,178 +1,137 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, validate
 
-# -----------------------------------------------------------------------------
-# SCHEMA PRINCIPAL 
-# -----------------------------------------------------------------------------
+# Lista de espécies válidas para reutilizar
+VALID_SPECIES = ["Cachorro", "Gato", "Pássaro", "Peixe", "Roedor", "Outros"]
+
+# --- SCHEMA BASE (Para exibição/GET) ---
 class PetSchema(Schema):
-    id = fields.String(required=True)
-    name = fields.String(required=True)
-    specie = fields.String(required=True)
-    sex = fields.String(required=True)
-    age = fields.Integer(required=True)
-    owner_id = fields.Dict(required=True)
-    created_at = fields.DateTime(format="%Y-%m-%d %H:%M:%S.%f", required=True)
-
-# -----------------------------------------------------------------------------
-# SCHEMAS DE RESPOSTA (GET)
-# -----------------------------------------------------------------------------
-class GetPetsResponseSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": True}
+    id = fields.String(
+        required=True, 
+        metadata={"description": "Identificador único do pet.", "example": "10"}
     )
-    data = fields.List(
-        fields.Nested(PetSchema),
+    name = fields.String(
+        required=True, 
+        metadata={"description": "Nome completo do animal.", "example": "Thor"}
+    )
+    specie = fields.String(
+        required=True, 
+        metadata={"description": "Espécie do animal.", "example": "Cachorro"}
+    )
+    sex = fields.String(
+        required=True, 
+        metadata={"description": "Sexo biológico (M ou F).", "example": "M"}
+    )
+    age = fields.Integer(
+        required=True, 
+        metadata={"description": "Idade do animal em MESES.", "example": 24}
+    )
+    # owner_id como Dict porque o Service retorna o objeto Cliente completo
+    owner_id = fields.Dict(
         required=True,
         metadata={
-            "description": "Lista de pets cadastrados",
-            "example": [{
-                "id": "1",
-                "name": "Bolinha",
-                "specie": "Cachorro",
-                "sex": "M",
-                "age": 3,
-                "owner_id": "2",
-                "created_at": "2025-11-15 14:36:43.122189"
-            }]
+            "description": "Dados completos do dono do animal.",
+            "example": {"id": 1, "name": "João Silva", "email": "joao@email.com"}
         }
     )
+    created_at = fields.DateTime(
+        format="%Y-%m-%d %H:%M:%S", 
+        required=True,
+        metadata={"description": "Data de registro.", "example": "2023-11-24 14:30:00"}
+    )
+
+# --- RESPOSTAS DE GET ---
+class GetPetsResponseSchema(Schema):
+    success = fields.Boolean(required=True, metadata={"example": True})
+    data = fields.List(fields.Nested(PetSchema), required=True)
 
 class GetPetsByIDResponseSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": True}
-    )
-    data = fields.Nested(
-        PetSchema,
-        required=True,
-        metadata={
-            "description": "Pet encontrado com base no ID informado",
-            "example": {
-                "id": "1",
-                "name": "Bolinha",
-                "specie": "Cachorro",
-                "sex": "M",
-                "age": 3,
-                "owner_id": "2",
-                "created_at": "2025-11-15 14:36:43.122189"
-            }
-        }
-    )
+    success = fields.Boolean(required=True, metadata={"example": True})
+    data = fields.Nested(PetSchema, required=True)
 
 class GetPetsByIDResponseNotFoundSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": False}
-    )
-    point = fields.String(
-        required=True,
-        metadata={"example": "get_pet_by_id"}
-    )
-    message = fields.String(
-        required=True,
-        metadata={
-            "description": "Mensagem de erro",
-            "example": "Pet não encontrado"
-        }
-    )
+    success = fields.Boolean(required=True, metadata={"example": False})
+    point = fields.String(required=True, metadata={"example": "get_pet_by_id"})
+    message = fields.String(required=True, metadata={"example": "Pet não encontrado"})
 
-# -----------------------------------------------------------------------------
-# SCHEMAS DE CRIAÇÃO (POST)
-# -----------------------------------------------------------------------------
+# --- CRIAÇÃO (POST) ---
 class CreatePetSchema(Schema):
     name = fields.String(
-        required=True,
-        metadata={"description": "Nome do pet.", "example": "Rex"}
+        required=True, 
+        metadata={"description": "Nome do pet.", "example": "Mel"}
     )
     specie = fields.String(
         required=True,
-        metadata={"description": "Espécie do pet (ex: Cachorro, Gato).", "example": "Cachorro"}
+        validate=validate.OneOf(VALID_SPECIES),
+        metadata={
+            "description": f"Espécie do animal. Opções: {', '.join(VALID_SPECIES)}.",
+            "example": "Gato"
+        }
     )
     sex = fields.String(
-        required=True,
-        metadata={"description": "Sexo do pet (M ou F).", "example": "M"}
+        required=True, 
+        metadata={"description": "Sexo: 'M' (Macho) ou 'F' (Fêmea).", "example": "F"}
     )
     age = fields.Integer(
         required=True,
-        metadata={"description": "Idade do pet em anos.", "example": 5}
+        validate=validate.Range(min=0, error="A idade deve ser maior ou igual a 0."),
+        metadata={
+            "description": "Idade do animal em MESES completos. (Ex: 2 anos = 24).",
+            "example": 24
+        }
     )
     owner_id = fields.Integer(
-        required=True,
-        metadata={"description": "ID do dono (Client) ao qual o pet pertence.", "example": 1}
+        required=True, 
+        metadata={"description": "ID do cliente dono do pet.", "example": 1}
     )
 
 class CreatePetResponseFailedSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": False}
-    )
-    point = fields.String(
-        required=True,
-        metadata={"example": "create_pet"}
-    )
-    message = fields.String(
-        required=True,
-        metadata={
-            "description": "Mensagem de erro",
-            "example": "Erro ao criar pet"
-        }
-    )
+    success = fields.Boolean(required=True, metadata={"example": False})
+    point = fields.String(required=True, metadata={"example": "create_pet"})
+    message = fields.String(required=True, metadata={"example": "Dados inválidos"})
 
-# -----------------------------------------------------------------------------
-# SCHEMAS DE DELEÇÃO (DELETE)
-# -----------------------------------------------------------------------------
-class DeletePetResponseFailedSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": False}
-    )
-    point = fields.String(
-        required=True,
-        metadata={"example": "delete_pet"}
-    )
-    message = fields.String(
-        required=True,
-        metadata={
-            "description": "Mensagem de erro",
-            "example": "ID não existe"
-        }
-    )
-
-# -----------------------------------------------------------------------------
-# SCHEMAS DE ATUALIZAÇÃO (PATCH)
-# -----------------------------------------------------------------------------
+# --- ATUALIZAÇÃO (PATCH) ---
 class UpdatePetSchema(Schema):
-    name = fields.String(
-        required=False,
-        metadata={"description": "Nome do pet.", "example": "Rex Silva"}
-    )
+    name = fields.String(required=False, metadata={"example": "Mel da Silva"})
     specie = fields.String(
         required=False,
-        metadata={"description": "Espécie do pet.", "example": "Cachorro"}
+        validate=validate.OneOf(VALID_SPECIES),
+        metadata={"example": "Gato"}
     )
-    sex = fields.String(
-        required=False,
-        metadata={"description": "Sexo do pet (M ou F).", "example": "M"}
-    )
+    sex = fields.String(required=False, metadata={"description": "M ou F", "example": "F"})
     age = fields.Integer(
-        required=False,
-        metadata={"description": "Idade do pet.", "example": 6}
+        required=False, 
+        validate=validate.Range(min=0),
+        metadata={"description": "Idade em meses", "example": 25}
     )
-    # owner_id geralmente não se altera no update simples, mas pode ser adicionado se necessário
 
 class UpdatePetResponseFailedSchema(Schema):
-    success = fields.Boolean(
-        required=True,
-        metadata={"example": False}
-    )
-    point = fields.String(
-        required=True,
-        metadata={"example": "update_pet"}
-    )
-    message = fields.String(
-        required=True,
+    success = fields.Boolean(required=True, metadata={"example": False})
+    point = fields.String(required=True, metadata={"example": "update_pet"})
+    message = fields.String(required=True, metadata={"example": "Erro na atualização"})
+
+# --- DELEÇÃO ---
+class DeletePetResponseFailedSchema(Schema):
+    success = fields.Boolean(required=True, metadata={"example": False})
+    point = fields.String(required=True, metadata={"example": "delete_pet"})
+    message = fields.String(required=True, metadata={"example": "Pet não encontrado"})
+
+# --- FILTROS (Novo!) ---
+class PetFilterSchema(Schema):
+    logic = fields.String(
+        load_default="AND",
+        validate=validate.OneOf(["AND", "OR"]),
         metadata={
-            "description": "Mensagem de erro",
-            "example": "ID não existe"
+            "description": "Lógica de comparação entre os campos. Padrão: AND."
         }
     )
+    operator = fields.String(
+        load_default="CONTAINS",
+        validate=validate.OneOf(["EQUAL", "NOT EQUAL", "CONTAINS", "LESS THAN", "MORE THAN", "LESS THAN OR EQUAL", "MORE THAN OR EQUAL"]),
+        metadata={
+            "description": "Tipo de operador para a busca. Padrão: CONTAINS."
+        }
+    )
+    name = fields.String(required=False, metadata={"description": "Filtrar por nome."})
+    specie = fields.String(required=False, metadata={"description": "Filtrar por espécie."})
+    sex = fields.String(required=False, metadata={"description": "Filtrar por sexo."})
+    age = fields.String(required=False, metadata={"description": "Filtrar por idade."})

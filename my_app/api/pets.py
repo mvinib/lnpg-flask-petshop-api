@@ -2,71 +2,68 @@ from flask import jsonify, request
 from flask_smorest import Blueprint
 from flask_jwt_extended import jwt_required
 from ..services.pets import Pets
-from ..utils.validate import schemaValidate, ValidationFailedSchema
-
-# Importando Schemas 
-from ..schemas.pets import (
-    GetPetsResponseSchema,
-    GetPetsByIDResponseSchema,
-    GetPetsByIDResponseNotFoundSchema,
-    CreatePetSchema,
-    CreatePetResponseFailedSchema,
-    DeletePetResponseFailedSchema,
-    UpdatePetResponseFailedSchema,
-    UpdatePetSchema
-)
 from ..schemas.generic import GenericSuccessSchema
+
+# Import dos Schemas
+from ..schemas.pets import (
+    GetPetsResponseSchema, GetPetsByIDResponseSchema, GetPetsByIDResponseNotFoundSchema,
+    CreatePetSchema, CreatePetResponseFailedSchema,
+    DeletePetResponseFailedSchema,
+    UpdatePetSchema, UpdatePetResponseFailedSchema,
+    PetFilterSchema # <--- IMPORT NOVO
+)
+
+# Tenta importar o ValidationFailedSchema
+try:
+    from ..utils.validate import ValidationFailedSchema
+except ImportError:
+    ValidationFailedSchema = None
 
 pets_bp = Blueprint('pets', __name__)
 
 # -----------------------------------------------------------------------------
-# ROTA: LISTAR PETS
+# ROTA: LISTAR PETS (Atualizada com Filtros)
 # -----------------------------------------------------------------------------
 @pets_bp.route('/', methods=['GET'])
-@pets_bp.response(200, GetPetsResponseSchema, description="Listar pets")
+@pets_bp.response(200, GetPetsResponseSchema, description="Lista de pets recuperada com sucesso")
+@pets_bp.arguments(PetFilterSchema, location="query") # <--- Injeta os filtros na função
 @pets_bp.doc(security=[{"bearerAuth": []}])
 @jwt_required()
-def get_pets():
-    """Buscar lista de pets
+def get_pets(filters): # Recebe 'filters' do argumento acima
+    """Listar todos os pets.
 
-    Retorna a lista de todos os pets cadastrados na plataforma.
-    É possível realizar filtros na hora de realizar a busca (ex: name, specie).
+    Retorna uma listagem completa dos animais cadastrados.
+    Permite filtros avançados via Query Parameters (logic, operator, etc).
     """
     pets = Pets()
-    filters = request.args.to_dict()
     data = []
 
-    if not filters:
+    # Se o filtro tiver APENAS 'logic' e 'operator' (que são padrões), listamos tudo.
+    # Se tiver mais chaves (name, specie...), fazemos a busca.
+    keys_de_busca = [k for k in filters.keys() if k not in ["logic", "operator"]]
+    
+    if not keys_de_busca:
         data = pets.list()
     else:
         data = pets.search(filters)
 
-    return jsonify({
-        "success": True,
-        "data": data
-    }), 200
+    return jsonify({"success": True, "data": data}), 200
 
 # -----------------------------------------------------------------------------
 # ROTA: BUSCAR PET POR ID
 # -----------------------------------------------------------------------------
 @pets_bp.route('/<int:pet_id>', methods=['GET'])
 @pets_bp.response(200, GetPetsByIDResponseSchema, description="Pet encontrado")
-@pets_bp.response(404, GetPetsByIDResponseNotFoundSchema, description="Pet não encontrado")
+@pets_bp.response(404, GetPetsByIDResponseNotFoundSchema, description="ID não encontrado no sistema")
 @pets_bp.doc(security=[{"bearerAuth": []}])
 @jwt_required()
 def get_pet_by_id(pet_id):
-    """Buscar pet pelo ID
-    
-    Faz a busca de um pet pelo ID e retorna erro se não encontrar.
-    """
+    """Obter detalhes de um pet."""
     pets = Pets()
     pet = pets.get_by_id(pet_id)
 
     if pet:
-        return jsonify({
-            "success": True,
-            "data": pet
-        }), 200
+        return jsonify({"success": True, "data": pet}), 200
 
     return jsonify({
         "success": False,
@@ -79,45 +76,26 @@ def get_pet_by_id(pet_id):
 # -----------------------------------------------------------------------------
 @pets_bp.route('/', methods=['POST'])
 @pets_bp.doc(security=[{"bearerAuth": []}])
-@pets_bp.doc(
-    requestBody={
-        "content": {
-            "application/json": {
-                "schema": CreatePetSchema,
-                "required": True
-            }
-        }
-    }
-)
-@pets_bp.response(422, ValidationFailedSchema, description="Falha na validação dos campos")
-@pets_bp.response(400, CreatePetResponseFailedSchema, description="Falha ao criar o pet.")
-@pets_bp.response(201, GenericSuccessSchema, description="Pet criado com sucesso")
+@pets_bp.arguments(CreatePetSchema, location="json") 
+@pets_bp.response(201, GenericSuccessSchema, description="Pet cadastrado com sucesso")
+@pets_bp.response(400, CreatePetResponseFailedSchema, description="Violação de regra de negócio")
+@pets_bp.response(422, ValidationFailedSchema, description="Erro de validação")
 @jwt_required()
-def create_pet():
-    """Criar novo pet"""
-    data = request.json
+def create_pet(pet_data): 
+    """Cadastrar novo pet."""
     
-    # 1. Validação genérica (existência dos campos)
-    validation_error = schemaValidate(["name", "specie", "sex", "owner_id", "age"], data)
-    if validation_error:
-        return validation_error
-
-    # 2. Validação Específica de Regra de Negócio (Sexo)
-    sex = data.get("sex")
-    if sex and sex.upper() not in ('M', 'F'):
+    if pet_data["sex"].upper() not in ('M', 'F'):
         return jsonify({
             "success": False,
             "point": "create_pet_validation",
             "message": "O campo 'sex' deve ser 'M' (Macho) ou 'F' (Fêmea)."
         }), 400
     
-    # Padronização
-    if sex:
-        data["sex"] = sex.upper()
+    pet_data["sex"] = pet_data["sex"].upper()
 
     pets = Pets()
     try:
-        pets.create(data)
+        pets.create(pet_data)
     except Exception as err:
         return jsonify({
             "success": False,
@@ -128,68 +106,34 @@ def create_pet():
     return jsonify({"success": True}), 201
 
 # -----------------------------------------------------------------------------
-# ROTA: DELETAR PET
-# -----------------------------------------------------------------------------
-@pets_bp.route('/<int:pet_id>', methods=['DELETE'])
-@pets_bp.doc(security=[{"bearerAuth": []}])
-@pets_bp.response(200, GenericSuccessSchema, description="Pet deletado com sucesso")
-@pets_bp.response(400, DeletePetResponseFailedSchema, description="Pet não encontrado")
-@jwt_required()
-def delete_pet(pet_id):
-    """Deletar pet"""
-    pets = Pets()
-    try:
-        pets.delete(pet_id)
-    except Exception as err:
-        return jsonify({
-            "success": False,
-            "point": "delete_pet",
-            "message": str(err)
-        }), 400
-
-    return jsonify({"success": True}), 200
-
-# -----------------------------------------------------------------------------
 # ROTA: ATUALIZAR PET
 # -----------------------------------------------------------------------------
 @pets_bp.route('/<int:pet_id>', methods=['PATCH'])
 @pets_bp.doc(security=[{"bearerAuth": []}])
-@pets_bp.doc(
-    requestBody={
-        "content": {
-            "application/json": {
-                "schema": UpdatePetSchema,
-                "required": False
-            }
-        }
-    }
-)
-@pets_bp.response(422, ValidationFailedSchema, description="Falha na validação dos campos")
-@pets_bp.response(400, UpdatePetResponseFailedSchema, description="Pet não encontrado")
-@pets_bp.response(200, GenericSuccessSchema, description="Pet editado com sucesso")
+@pets_bp.arguments(UpdatePetSchema, location="json")
+@pets_bp.response(200, GenericSuccessSchema, description="Atualização realizada")
+@pets_bp.response(400, UpdatePetResponseFailedSchema, description="Erro na atualização")
+@pets_bp.response(422, ValidationFailedSchema, description="Formato de dados inválido")
 @jwt_required()
-def update_pet(pet_id):
-    """Editar pet
+def update_pet(data, pet_id): 
+    """Atualizar dados do pet."""
     
-    Todos os campos podem ser editados, exceto id e created_at.
-    """
-    data = request.json
-    
-    # 1. Validação genérica (impedir alteração de id/data)
-    validation_error = schemaValidate(["id", "created_at"], data, False)
-    if validation_error:
-        return validation_error
+    if "id" in data or "created_at" in data:
+         return jsonify({
+            "success": False,
+            "point": "update_pet_validation",
+            "message": "Não é permitido alterar id ou created_at manualmente"
+        }), 422
 
-    # 2. Validação Específica (Sexo)
     if "sex" in data:
         sex = data.get("sex")
-        if sex and sex.upper() not in ('M', 'F'):
-            return jsonify({
-                "success": False,
-                "point": "update_pet_validation",
-                "message": "O campo 'sex' deve ser 'M' (Macho) ou 'F' (Fêmea)."
-            }), 400
         if sex:
+            if sex.upper() not in ('M', 'F'):
+                return jsonify({
+                    "success": False,
+                    "point": "update_pet_validation",
+                    "message": "O campo 'sex' deve ser 'M' (Macho) ou 'F' (Fêmea)."
+                }), 400
             data["sex"] = sex.upper()
 
     pets = Pets()
@@ -199,6 +143,28 @@ def update_pet(pet_id):
         return jsonify({
             "success": False,
             "point": "update_pet",
+            "message": str(err)
+        }), 400
+
+    return jsonify({"success": True}), 200
+
+# -----------------------------------------------------------------------------
+# ROTA: DELETAR PET
+# -----------------------------------------------------------------------------
+@pets_bp.route('/<int:pet_id>', methods=['DELETE'])
+@pets_bp.doc(security=[{"bearerAuth": []}])
+@pets_bp.response(200, GenericSuccessSchema, description="Registro removido")
+@pets_bp.response(400, DeletePetResponseFailedSchema, description="ID não encontrado ou erro ao deletar")
+@jwt_required()
+def delete_pet(pet_id):
+    """Remover pet do sistema."""
+    pets = Pets()
+    try:
+        pets.delete(pet_id)
+    except Exception as err:
+        return jsonify({
+            "success": False,
+            "point": "delete_pet",
             "message": str(err)
         }), 400
 
