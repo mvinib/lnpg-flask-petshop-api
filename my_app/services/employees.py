@@ -25,7 +25,8 @@ class Employees:
 
     def get_by_id(self, id):
         data = self.handler.get_by_id(id)
-        data.pop("password")
+        if data:
+            data.pop("password")
         return data
     
     def search(self, filters: dict, include_password: bool = False):

@@ -74,4 +74,127 @@ class GetEmployeesByIDResponseNoutFoundSchema(Schema):
             "example": "Funcionário não encontrado"
             }
         )
-  
+
+class CreateEmployeeSchema(Schema):
+    name = fields.String(
+        required=True,
+        metadata={
+            "description": "Nome completo do funcionário.",
+            "example": "João Carlos dos Santos"
+        }
+    )
+    job_title = fields.String(
+        required=True,
+        metadata={
+            "description": "Cargo do funcionário.",
+            "example": "Tosador"
+        }
+    )    
+    email = fields.String(
+        required=True,
+        metadata={
+            "description": "Email de contato do funcionário (deve ser único).",
+            "example": "joao@petshop.com"
+        }
+    )
+    password = fields.String(
+        required=True,
+        metadata={
+            "description": "Senha de acesso do funcionário.",
+            "example": "Abcde12@"
+        }
+    )
+
+
+class CreateEmployeeResponseFailedSchema(Schema):
+    success = fields.Boolean(
+        required=True,
+        metadata={
+            "example": False
+        }
+    )
+    point = fields.String(
+        required=True,
+        metadata={
+            "example": "create_employee"
+        }
+    )
+    message = fields.String(
+        required=True,
+        metadata={
+            "description": "Mensagem de erro",
+            "example": "O e-mail informado já está em uso"
+            }
+        )
+    
+class DeleteEmployeeResponseFailedSchema(Schema):
+    success = fields.Boolean(
+            required=True,
+            metadata={
+                "example": False
+        }
+    )
+    point = fields.String(
+        required=True,
+        metadata={
+            "example": "delete_employee"
+        }
+    )
+    message = fields.String(
+        required=True,
+        metadata={
+            "description": "Mensagem de erro",
+            "example": "ID não existe"
+            }
+        )
+    
+class UpdateEmployeeResponseFailedSchema(Schema):
+    success = fields.Boolean(
+        required=True,
+        metadata={
+            "example": False
+        }
+    )
+    point = fields.String(
+        required=True,
+        metadata={
+            "example": "update_employee"
+        }
+    )
+    message = fields.String(
+        required=True,
+        metadata={
+            "description": "Mensagem de erro",
+            "example": "ID não existe"
+            }
+        )    
+    
+class UpdateEmployeeSchema(Schema):
+    name = fields.String(
+        required=False,
+        metadata={
+            "description": "Nome completo do funcionário.",
+            "example": "João Carlos dos Santos"
+        }
+    )
+    job_title = fields.String(
+        required=False,
+        metadata={
+            "description": "Cargo do funcionário.",
+            "example": "Tosador"
+        }
+    )    
+    email = fields.String(
+        required=False,
+        metadata={
+            "description": "Email de contato do funcionário (deve ser único).",
+            "example": "joao@petshop.com"
+        }
+    )
+    password = fields.String(
+        required=False,
+        metadata={
+            "description": "Senha de acesso do funcionário.",
+            "example": "Abcde12@"
+        }
+    )

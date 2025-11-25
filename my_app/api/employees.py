@@ -1,8 +1,9 @@
 from flask import  jsonify, request
 from flask_smorest import Blueprint
 from ..services.employees import Employees
-from ..utils.validate import schemaValidate
-from ..schemas.employee import GetEmployeesResponseSchema, GetEmployeesByIDResponseNoutFoundSchema, GetEmployeesByIDResponseSchema
+from ..utils.validate import schemaValidate, ValidationFailedSchema
+from ..schemas.employee import GetEmployeesResponseSchema, GetEmployeesByIDResponseSchema, GetEmployeesByIDResponseNoutFoundSchema, CreateEmployeeSchema, CreateEmployeeResponseFailedSchema, DeleteEmployeeResponseFailedSchema, UpdateEmployeeResponseFailedSchema, UpdateEmployeeSchema
+from ..schemas.generic import GenericSuccessSchema
 from flask_jwt_extended import jwt_required
 
 employees_bp = Blueprint('employees', __name__)
@@ -64,8 +65,24 @@ def get_employee_by_id(employee_id):
 
 
 @employees_bp.route('/', methods=['POST'])
+@employees_bp.doc(security=[{"bearerAuth": []}])
+@employees_bp.doc(
+    requestBody={
+        "content": {
+            "application/json": {
+                "schema": CreateEmployeeSchema 
+            }
+        },
+        "required": True 
+    }
+)
+@employees_bp.response(422, ValidationFailedSchema, description="Falha na validação dos campos")
+@employees_bp.response(400, CreateEmployeeResponseFailedSchema, description="Falha ao criar o funcionário.")
+@employees_bp.response(201, GenericSuccessSchema, description="Funcionário criado com sucesso")
 @jwt_required()
 def create_employee():
+    """Criar novo funcionário
+    """
     data = request.json
 
     validation_error = schemaValidate(["name", "job_title", "email", "password"], data)
@@ -79,8 +96,13 @@ def create_employee():
     return jsonify({ "success": True }), 201
 
 @employees_bp.route('/<int:employee_id>', methods=['DELETE'])
+@employees_bp.doc(security=[{"bearerAuth": []}])
+@employees_bp.response(200, GenericSuccessSchema, description="Funcionário deletado com sucesso")
+@employees_bp.response(400, DeleteEmployeeResponseFailedSchema, description="Funcionário não encontrado")
 @jwt_required()
 def delete_employee(employee_id):
+    """Deletar funcionário
+    """
     employees = Employees()
     try:
         employees.delete(employee_id)
@@ -95,8 +117,28 @@ def delete_employee(employee_id):
     return jsonify({ "success": True }), 200
 
 @employees_bp.route('/<int:employee_id>', methods=['PATCH'])
+@employees_bp.doc(security=[{"bearerAuth": []}])
+@employees_bp.doc(
+    requestBody={
+        "content": {
+            "application/json": {
+                "schema": UpdateEmployeeSchema 
+            }
+        },
+        "required": False 
+    }
+)
+@employees_bp.response(422, ValidationFailedSchema, description="Falha na validação dos campos")
+@employees_bp.response(400, UpdateEmployeeResponseFailedSchema, description="Funcionário não encontrado")
+@employees_bp.response(200, GenericSuccessSchema, description="Funcionário editado com sucesso")
 @jwt_required()
 def update_employee(employee_id):
+    """Editar funcionário
+
+    Todos os campos do funcionário podem ser editados. Exceto: 
+    * id
+    * created_at
+    """
     data = request.json
     validation_error = schemaValidate(["id", "created_at"], data, False)
 

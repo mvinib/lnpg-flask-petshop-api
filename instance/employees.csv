@@ -1,2 +1,2 @@
-id, name, job_title, email, password, created_at
+id,name,job_title,email,password,created_at
 1,LEONARDO,Veterinário,leo@ifal.edu.br,scrypt:32768:8:1$NxqGC70qbImu1C9j$934d129bf57d0bc54ef0a465f2f89d9cca75626843346d3c9233051dba6d6d2e0e0920a5391015a714519203b1330d4e382fba11ebdf395f64c898e408631a76,2025-11-19 19:01:57.357203
