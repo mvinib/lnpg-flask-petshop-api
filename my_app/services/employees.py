@@ -21,6 +21,8 @@ class Employees:
         self.handler.delete(id)
     
     def update(self, id, data: dict):
+        if data.get("password"):
+            data["password"] = generate_password_hash(data.get("password"))
         self.handler.update({**data, "id": id})
 
     def get_by_id(self, id):
