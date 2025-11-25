@@ -1,7 +1,8 @@
 id,name,job_title,email,password,created_at
-1,ADMIN,Administrador,admin@petshop.com,123456,2025-11-19 19:01:57.357203
+1,ADMIN,Administrador,admin@petshop.com,scrypt:32768:8:1$8w2J38wA9uKupuNK$4ba96dc892168f2734862f21e1723bad6a96c6b55cb2c67a833da7b6f66b841097ed1739afe290cb118b115020b65e82901f513483c89a890b4209ab48d8a5dc,2025-11-19 19:01:57.357203
 2,Marcos Vinicius,Desenvolvedor,marcos@petshop.com,scrypt:32768:8:1$sqO4iHACO1tQUQbL$5c504b16fbbc30b5a9cf6bab69d506caae7880439776e2da8c4bbaea4098aa1a17466829c256aecf70238420cd7faca1e21829990374c5cb7a8a35f14980604c,2025-11-25 00:21:26.108086
 3,David Emiliano,Desenvolvedor,david@petshop.com,scrypt:32768:8:1$e3j1Mw0kfhwNeeyU$6db88802f858d5830cbb26f50dd5094529211ee6f0cf04d99432ea5b0a23f7e2ce11a221d00f7d114274b0de7bf4ca0902c9ebea470aa6eacda94e68075d29af,2025-11-25 00:21:38.906788
 4,Leonardo Silva,Desenvolvedor,leonardo@petshop.com,scrypt:32768:8:1$aBzUleAojFUckA7P$1f53b0a98536c7fb4332e63435d8060be19d6208f837abff4729d74d58d038efc20ab2df9e6c96b4e61c8966c452fbec5aaa52db23d95e4475b675534c314c2e,2025-11-25 00:21:50.918838
 5,Abel Lucas,Desenvolvedor,abel@petshop.com,scrypt:32768:8:1$HEE2VFPnYay1AvpE$a448404e16e6097c19abb28721a853bf52dc7d03bcb432f0cb2da5ee00bfad01135afe80a5e09f82b6cdc593c8da0089619322c3c44313ff9496587867a8c9bc,2025-11-25 00:22:02.926196
 6,Ivo Calado,Veterinário,ivo@petshop.com,scrypt:32768:8:1$JNkIGYhlNGty4vtW$3fa8efb37aee27bab366a0451504f7b7f0544b3fba5c9045c9cab567887cd80ca1131c25dbdc806546c980cbd40713af967dd0b5fc5d6a0ba0c2c8193f9adc6d,2025-11-25 00:41:12.963234
+
