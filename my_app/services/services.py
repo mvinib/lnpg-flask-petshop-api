@@ -6,11 +6,11 @@ class Services:
         self.handler = DataHandler("services")
     
     def list(self):
-        data = self.handler.list_all()
-        return data
+        return self.handler.list_all()
     
     def create(self, data: dict):
-        self.handler.create({** data, "created_at": dt.now()})
+        # Adiciona a data de criação automaticamente
+        self.handler.create({**data, "created_at": dt.now()})
 
     def delete(self, id):
         self.handler.delete(id)
@@ -22,8 +22,21 @@ class Services:
         return self.handler.get_by_id(id)
     
     def search(self, filters: dict):
+        # Lista de chaves que NÃO são colunas do CSV, mas comandos de busca
         filters_to_remove = ["logic", "operator"]
+        
+        # Monta a estrutura complexa de critérios que o DataHandler espera
         return self.handler.search({
             "logic": filters.get("logic", "AND"),
-            "criteria": list(filter(lambda item: item.get("key", "") not in filters_to_remove,[{"key": key, "value": value, "operator": filters.get("operator", "CONTAINS")} for key,value in filters.items()]))
+            "criteria": list(filter(
+                lambda item: item.get("key", "") not in filters_to_remove,
+                [
+                    {
+                        "key": key, 
+                        "value": value, 
+                        "operator": filters.get("operator", "CONTAINS")
+                    } 
+                    for key, value in filters.items()
+                ]
+            ))
         })
